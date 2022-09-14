@@ -1,0 +1,137 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+subtitle: 'Assignment 6'
+author: 'Donald Butler'
+date: '03/05/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1.
+
+A bag contains 5 green and 7 red jellybeans. How many ways can 5 jellybeans be withdrawn from the bag so that the number of green ones withdrawn will be less than 2?
+
+```{r}
+choose(7,5) + choose(5,1) * choose(7,4)
+```
+
+# Problem 2.
+
+A certain congressional committee consists of 14 senators and 13 representatives. How many ways can a subcommittee of 5 be formed if at least 4 of the members must be representatives.
+
+```{r}
+choose(13,5) + choose(13,4) * choose(14,1)
+```
+
+# Problem 3.
+
+If a coin is tossed 5 times, and then a standard six-sided die is rolled 2 times, and finally a group of three cards are drawn from a standard deck of 52 cards without replacement, how many different outcomes are possible?
+
+```{r}
+coins <- 2^5 
+dice <- 6^2
+cards <- 52 * 51 * 50
+coins * dice * cards
+```
+
+# Problem 4.
+
+3 cards are drawn from a standard deck without replacement. What is the probability that at least one of the cards drawn is a 3?
+
+The probability that at least one card is a 3 is the same as 1 - probability that none are a three.
+
+```{r}
+1 - choose(48,3)/choose(52,3)
+```
+
+# Problem 5.
+
+Lorenzo is picking out some movies to rent, and he is primarily interested in documentaries and mysteries. He has narrowed down his selections to 17 documentaries and 14 mysteries.
+
+## Step 1.
+
+How many different combinations of 5 movies can he rent?
+
+```{r}
+choose(14+17,5)
+```
+
+## Step 2.
+
+How many different combinations of 5 movies can he rent if he wants at least one mystery?
+
+This is equivalent to finding the number of combinations without a mystery and subtracting from the total number of combinations.
+    
+```{r}
+choose(14+17,5) - choose(17,5)
+```
+
+# Problem 6.
+
+In choosing what music to play at a charity fund raising event, Cory needs to have an equal number of symphonies from Brahms, Haydn, and Mendelssohn. If he is setting up a schedule of the 9 symphonies to be played, and he has 4 Brahms, 104 Haydn, and 17 Mendelssohn symphonies from which to choose, how many different schedules are possible?
+
+```{r}
+Brahms <- choose(4,3)
+Haydn <- choose(104,3)
+Mendelssohn <- choose(17,3)
+Schedule <- factorial(9)
+Brahms * Haydn * Mendelssohn * Schedule
+
+```
+
+# Problem 7.
+
+An English teacher needs to pick 13 books to put on his reading list for the next school year, and he needs to plan the order in which they should be read. He has narrowed down his choices to 6 novels, 6 plays, 7 poetry books, and 5 nonfiction books.
+
+## Step 1.
+
+If he wants to include no more than 4 nonfiction books, how many different reading schedules are possible?
+
+This is equivalent to the total number of combinations of 13 books subtracting the combinations that include all 5 nonfiction books.
+
+```{r}
+(choose(24,13) - choose(19,8) * choose(5,5)) * factorial(13)
+```
+
+## Step 2.
+
+If he wants to include all 6 plays, how many different reading schedules are possible?
+
+```{r}
+(choose(6,6) * choose(18,7)) * factorial(13)
+```
+
+# Problem 8.
+
+Zane is planting trees along his driveway, and he has 5 sycamores and 5 cypress trees to plant in one row. What is the probability that he randomly plants the trees so that all 5 sycamores are next to each other and all 5 cypress trees are next to each other?
+
+```{r}
+2/choose(10,5)
+```
+
+# Problem 9.
+
+If you draw a queen or lower from a standard deck of cards, I will pay you \$4. If not, you pay me \$16.
+
+## Step 1.
+
+Find the expected value of the proposition.
+
+```{r}
+(ev <- 4 * 11/13 - 16 * 2/13)
+```
+
+## Step 2.
+
+If you played this game 833 times, how much would you expect to win or lose?
+
+```{r}
+833 * ev
+```
+

@@ -1,0 +1,1016 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "05/15/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Final
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+```
+
+
+## Problem 1: Playing with PageRank
+
+You'll verify for yourself that PageRank works by performing calculations on a small universe of web pages. Let's use the 6 page universe that we had in the previous discussion. For this directed graph, perform the following calculations in R.
+
+### Part 1A: Create Transition Matrix
+
+Form the $A$ matrix. Then, introduce decay and form the $B$ matrix as we did in the course notes. 
+
+Each column of the transition matrix, $A$, is the probability of following a link to the next page. The sum of each column must be 1. Page #2 has no outbound links and is considered a dangling node, so we assume that a user can choose the next site at random, so the value of each node in column 2 is $1/n$.
+
+```{r}
+n <- 6
+A <- matrix(c(0, 1/2, 1/2, 0, 0, 0,
+              rep(1/n,n), # dangling node
+              1/3, 1/3, 0, 0, 1/3, 0,
+              0, 0, 0, 0, 1/2, 1/2,
+              0, 0, 0, 1/2, 0, 1/2,
+              0, 0, 0, 1, 0, 0), nrow = n, ncol = n, byrow = FALSE)
+A
+```
+
+Using a decay factor of .85 indicates an 85% chance that users will follow links on the current page, and a 15% chance of going to a random site.
+
+```{r}
+decay <- .85
+B <- decay * A + (1-decay)/n
+B
+```
+
+### Part 1B: Compute PageRank
+
+Start with a uniform rank vector, $r$, and perform power iterations on $B$ until convergence. That is, compute the solution $r = B^n \times r$. Attempt this for a sufficiently large $n$ so that $r$ actually converges.
+
+The PageRank function relies on the property of matrix multiplication that $A^n \times r = A(A^{n-1} \times r)$. This function will iterate until the next calculation is the same as the previous, or max_iterations is reached.
+
+```{r}
+
+PageRank <- function(r, B, max_iterations = 10000) {
+  for (i in 1:max_iterations) {
+    new_r <- B %*% r
+    if (all(r == new_r)) {
+      break
+    }
+    r <- new_r
+  }
+
+  # Will print the number of iterations needed for convergence
+  print(i-1)
+  return(r)
+}
+
+r = rep(1/n,n)
+
+pr <- PageRank(r,B)
+pr
+```
+
+From the PageRank output, we see that it took 71 iterations to converge. 
+
+Verify that the sum of the PageRank result is 1.
+
+```{r}
+sum(pr)
+```
+
+### Part 1C: Compute eigen-decomposition
+
+Computer the eigen-decomposition of $B$ and verify that you indeed get an eigenvalue vector that you obtained in the previous power iteration method. Further, this eigenvector has all positive entries and it sums to 1.
+
+```{r}
+decomp <- eigen(B)
+decomp
+```
+
+The largest eigenvalue is 1 and the associated eigenvector is the first vector. Our $pr$ vector is normalized, so we can normalize the eigenvector to compare. 
+
+```{r}
+ev <- Re(decomp$vectors[,1]/sum(decomp$vectors[,1]))
+ev
+```
+
+Verify $pr$ is equal to the normalized $ev$ found using eigen-decomposition.
+
+```{r}
+all(abs(ev - pr) < 1e-10)
+```
+
+### Part 1D: Graph PageRank Method
+
+The adjacency matrix is not quite the same as the transition matrix in Part 1A. Here, the row represents the pages that can be reached from the site. Additionally, we do not need to account for the dangling node for site 2, so we'll leave the row with zeros.
+
+```{r, warning=FALSE, message=FALSE}
+library(igraph)
+AdjM <- matrix(c(0, 1/2, 1/2, 0, 0, 0,
+              0, 0, 0, 0, 0, 0,
+              1/3, 1/3, 0, 0, 1/3, 0,
+              0, 0, 0, 0, 1/2, 1/2,
+              0, 0, 0, 1/2, 0, 1/2,
+              0, 0, 0, 1, 0, 0), nrow = n, ncol = n, byrow = TRUE)
+
+g <- graph_from_adjacency_matrix(AdjM, weighted = TRUE)
+plot(g)
+```
+
+Use the page.rank function to calculate the vector
+
+```{r}
+gpr <- page.rank(g)
+gpr$vector
+```
+
+Verify $pr$ is equal to the vector found using the igraph package.
+
+```{r}
+all(abs(gpr$vector - pr) < 1e-10)
+```
+
+## Problem 2: Digit Recognizer
+
+Go to https://www.kaggle.com/c/digit-recognizer/overview, and download the test and train dataset files.
+
+### Part 2A: Plot Training Images
+
+Using the train.csv file, plot representations of the first 10 images to understand the data format. Go ahead and divide all pixels by 255 to produce values between 0 and 1.
+
+From the kaggle website, the training dataset contains a label column which has the number represented by the image, and 784 pixel columns (pixel0 to pixel783), representing the 28 x 28 image. The image function displays the matrix with the top-left corner in the 1,n position in the matrix. So to display the image properly, we need to rotate the matrix 90 degrees clockwise. 
+
+```{r, fig.width = 7, fig.height = 4}
+
+rotate <- function(m) {
+  return(t(apply(m,2,rev)))
+}
+
+train_digits <- read.csv('train_digits.csv') %>%
+  mutate(across(starts_with('pixel'), ~./255))
+
+par(mfrow=c(2,5))
+for (i in 1:10) {
+  m <- rotate(matrix(as.numeric(train_digits[i,-c(1)]),nrow = 28, byrow = TRUE))
+  image(m, axes=FALSE, col = grey.colors(255), useRaster = TRUE)
+}
+
+```
+
+View the labels of the first 10 records.
+
+```{r}
+train_digits$label[1:10]
+```
+
+### Part 2B: Training Digit Distribution
+
+What is the frequency distribution of the numbers in the dataset?
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+
+ggplot(train_digits, aes(x = label)) + 
+  geom_histogram(bins = 10, color = 'black', fill = 'white') + 
+  xlab('digits') +
+  ylab('frequency') +
+  scale_x_continuous(breaks = 0:9)
+
+```
+
+The training dataset contains 42000 records and is nearly uniformly distributed, which should make a good training set.
+
+### Part 2C: Mean Pixel Intensity
+
+For each number, provide the mean pixel intensity. What does this tell you?
+
+```{r}
+if (!exists('train_intensity')) {
+  train_digits_intensity <- train_digits %>%
+    rowwise() %>%
+    transmute(label, intensity = sum(c_across(starts_with('pixel')))) %>%
+    ungroup()
+}
+
+train_digits_intensity %>%
+  group_by(label) %>%
+  summarise(mean_intensity = mean(intensity))
+```
+
+
+I would expect the mean pixel intensity to be highest for digits with the longest total pen stroke. As expected 1 has the lowest value, followed by 4, 7, and 9 which are all relatively close together. I am somewhat surprised about how much higher 0 is than the numbers 2, 3, and 8.
+
+### Part 2D: Principal Component Analysis
+
+Reduce the data by using principal components that account for 95% of the variance. How many components did you generate? Use PCA to generate all possible components. How many components are possible?
+
+```{r}
+if (!exists('train_digits.pca')) {
+  train_digits.pca <- prcomp(train_digits)
+}
+
+sd <- train_digits.pca$sdev
+var <- cumsum(sd^2)/sum(sd^2)
+plot(var)
+```
+
+```{r}
+which.max(var >= .95)
+```
+
+To account for 95% of the variance, we needed 139 components. The maximum number of components possible is 785, one for each pixel (28x28), and one for the label column.
+
+### Part 2E: Plot PCA
+
+Plot the first 10 images generated by the PCA. They will appear to be noise. Why?
+
+```{r, fig.width = 6, fig.height = 4}
+
+par(mfrow=c(2,4))
+for (i in 1:8) {
+  m <- rotate(matrix(as.numeric(train_digits.pca$rotation[-1,i]),nrow = 28, byrow = TRUE))
+  image(m, axes=FALSE, col = grey.colors(255), useRaster = TRUE)
+}
+
+```
+
+The images appear to be noise because we didn't separate the digits using the label column. 
+
+### Part 2F: PCA 8
+
+Now, select only those images that have labels that are 8. Re-run PCA that accounts for all of the variance. Plot the first 10 images. What do you see?
+
+```{r, fig.width = 6, fig.height = 4}
+if (!exists('train_digits_8.pca')) {
+  train_digits_8.pca <- prcomp(train_digits %>% filter(label == 8))
+}
+
+par(mfrow=c(2,4))
+for (i in 1:8) {
+  m <- rotate(matrix(as.numeric(train_digits_8.pca$rotation[-1,i]),nrow = 28, byrow = TRUE))
+  image(m, axes=FALSE, col = grey.colors(255), useRaster = TRUE)
+}
+
+```
+
+The PCA results generate images that can clearly be recognized as an 8.
+
+### Part 2G: Multinomial Model
+
+An incorrect approach to predicting the images would be to build a linear regression model with $y$ as the digit values and $X$ as the pixel matrix. Instead, we can build a multinomial model that classifies the digits. Build a multinomial model on the entirety of the training set. Then provide its classification accuracy as well as a matrix of observed versus forecast values. This matrix will be a $10 \times10$, and correct classification will be on the diagonal.
+
+```{r, warning=FALSE, message=FALSE}
+library(nnet)
+library(caret)
+
+train_digits_X <- train_digits[,-1]
+train_digits_y <- as.factor(train_digits[,'label'])
+
+train_digits_model <- multinom(train_digits_y~., train_digits_X, MaxNWts = 10000)
+
+```
+
+Use the model to predict against the training dataset and construct the confusion matrix.
+
+```{r}
+train_digits_prediction <- predict(train_digits_model, newdata = train_digits_X)
+confusionMatrix(train_digits_prediction, train_digits_y)
+```
+
+The model has an accuracy of 92% against the training set used to build the model.
+
+### Part 2H: Verify Model with Test Dataset
+
+Load the test dataset, and predict against the model.
+
+```{r}
+
+test_digits <- read.csv('test_digits.csv') %>%
+  mutate(across(starts_with('pixel'), ~./255))
+
+test_digits_prediction <- predict(train_digits_model, newdata = test_digits)
+
+```
+
+Graph the first 8 from the test set to compare with the predictions.
+
+```{r, fig.width = 6, fig.height = 4}
+
+par(mfrow=c(2,4))
+for (i in 1:8) {
+  m <- rotate(matrix(as.numeric(test_digits[i,]),nrow = 28, byrow = TRUE))
+  image(m, axes=FALSE, col = grey.colors(255), useRaster = TRUE)
+}
+
+```
+
+```{r}
+test_digits_prediction[1:8]
+```
+
+Looks like our model incorrectly predicted the 4th image as a 7. Generate submission.csv file to submit to kaggle to get the results of the model.
+
+```{r}
+write.csv(test_digits_prediction,'digits_submission.csv',row.names = TRUE, quote = FALSE)
+```
+
+Submitted results to kaggle, https://www.kaggle.com/donaldbutler95/competitions, and was scored at .90021.
+
+![Kaggle Submission](.\kaggle Submission - Digit Recognizer.png)
+
+## Problem 3: House Prices Advanced Regression Techniques
+
+You are to compete in the House Prices: Advanced Regression Techniques competition, https://www.kaggle.com/c/house-prices-advanced-regression-techniques . I want you to do the following.
+
+```{r}
+train_house <- read.csv('train_housing.csv')
+test_house <- read.csv('test_housing.csv')
+
+str(train_house)
+```
+
+### Part 3A: Descriptive and Inferential Statistics
+
+Provide univariate descriptive statistics and appropriate plots for the training data set. Provide a scatterplot matrix for at least two of the independent variables and the dependent variable. Derive a correlation matrix for any three quantitative variables in the dataset. Test the hypotheses that the correlations between each pairwise set of variables is 0 and provide an 80% confidence interval. Discuss the meaning of your analysis. Would you be worried about familywise
+error? Why or why not?
+
+#### Part 3A1: Scatterplot Matrix
+
+The dependent variable is SalePrice, and I'll select the total area (GrLivArea), the number of bedrooms (BedroomAbvGr), and the number of full bathrooms (FullBath).
+
+```{r}
+pairs(train_house[,c('GrLivArea','BedroomAbvGr','FullBath','SalePrice')])
+```
+
+The number of bedrooms and bathrooms, and the total square footage, correlate with the sale price, which is what we intuitively believe. It's interesting to see that the number of bedrooms doesn't necessarily correlate directly with sale price, but the number of bathrooms does.
+
+#### Part 3A2: Correlation Matrix
+
+```{r, warning=FALSE, message=FALSE}
+library(corrplot)
+train_house_cor <- cor(train_house[,c('GrLivArea','BedroomAbvGr','FullBath')])
+corrplot(train_house_cor)
+```
+
+The three variables selected are vary highly correlated to each other. Perform correlation test with 80% confidence interval to determine if the correleation between these variables is 0.
+
+```{r}
+cor.test(train_house$GrLivArea,train_house$BedroomAbvGr,conf.level = .8)
+cor.test(train_house$GrLivArea,train_house$FullBath,conf.level = .8)
+cor.test(train_house$BedroomAbvGr,train_house$FullBath,conf.level = .8)
+```
+
+These results indicate that the variables are highly related to themselves, which may impact the model using these variables to predict the sale price. We saw how the number of bedrooms may not be an indicator of sale price in the scatterplot matrix, but we see how the number of bedrooms is highly correlated to square footage.
+
+### Part 3B: Linear Algebra and Correlation
+
+Invert your correlation matrix from above. This is known as the precision matrix and contains variance inflation factors on the diagonal. Multiply the correlation matrix by the precision matrix, and then multiply the precision matrix by the correlation matrix. Conduct LU decomposition on the matrix.
+
+#### Part 3B1: Create Precision Matrix
+
+```{r}
+train_house_precision <- solve(train_house_cor)
+train_house_precision
+```
+
+#### Part 3B2: Correlation Matrix $\times$ Precision Matrix
+
+```{r}
+train_house_cor %*% train_house_precision
+```
+
+#### Part 3B3: Precision Matrix $\times$ Correlation Matrix
+
+```{r}
+train_house_precision %*% train_house_cor
+```
+
+#### Part 3B4: LU Decomposition
+
+```{r}
+library(matrixcalc)
+train_house_precision_LU <- lu.decomposition(train_house_precision)
+train_house_precision_LU
+```
+
+### Part 3C: Calculus-Based Probability & Statistics
+
+Many times, it makes sense to fit a closed form distribution to data. Select a variable in the kaggle training dataset that is skewed to the right, shift it so that the minimum value is absolutely above zero if necessary. Then load the MASS package and run fitdistr to fit an exponential probability density function. Find the optimal value of $\lambda$ for this distribution, and then take 1000 samples from this exponential distribution using this value. Plot a histogram and compare it with a histogram of your original variable. Using the exponential pdf, find the $\text{5}^{\text{th}}$ and $\text{95}^{\text{th}}$ percentiles using the cumulative distribution function. Also generate a 95% confidence interval from the empirical data, assuming normality. Finally, provide the empirical $\text{5}^{\text{th}}$ percentile and $\text{95}^{\text{th}}$ percentile of the data.
+
+#### Part 3C1: Identify Right-Skewed Variable
+
+Plot a few of the variables that should contain right-skewed data.
+
+```{r}
+par(mfrow=c(3,3))
+hist(train_house$LotFrontage, xlab="", ylab = '', main="LotFrontage", breaks = 20)
+hist(train_house$LotArea, xlab="", ylab = '', main="LotArea", breaks = 20)
+hist(train_house$BsmtFinSF1, xlab="", ylab = '', main="BsmtFinSF1", breaks = 20)
+hist(train_house$TotalBsmtSF, xlab="", ylab = '', main="TotalBsmtSF", breaks = 20)
+hist(train_house$X1stFlrSF, xlab="", ylab = '', main="X1stFlrSF", breaks = 20)
+hist(train_house$X2ndFlrSF, xlab="", ylab = '', main="X2ndFlrSF", breaks = 20)
+hist(train_house$GrLivArea, xlab="", ylab = '', main="GrLivArea", breaks = 20)
+hist(train_house$GarageArea, xlab="", ylab = '', main="GarageArea", breaks = 20)
+hist(train_house$PoolArea, xlab="", ylab = '', main="PoolArea", breaks = 20)
+```
+
+Let's select $\text{2}^{\text{nd}}$ floor square footage (X2ndFlrSF), which is strictly greater than or equal to 0.
+
+#### Part 3C2: Fit Exponential Distribution
+
+```{r, warning=FALSE, message=FALSE}
+library(MASS)
+
+lambda <- fitdistr(train_house$X2ndFlrSF, densfun = 'exponential')
+lambda
+
+```
+
+#### Part 3C3: Sample Distribution
+
+```{r}
+sample <- rexp(1000, lambda$estimate)
+
+par(mfrow=c(2,1))
+hist(train_house$X2ndFlrSF, xlab="X2ndFlrSF", ylab = '', main="Original X2ndFlrSF", breaks = 20)
+hist(sample, xlab="X2ndFlrSF", ylab = '', main="Sample X2ndFlrSF", breaks = 20)
+```
+
+#### Part 3C4: Distribution Percentiles
+
+Calculate the $\text{5}^{\text{th}}$ and $\text{95}^{\text{th}}$ percentiles of the exponential distribution.
+
+```{r}
+exp_5th <- qexp(.05, lambda$estimate)
+exp_95th <- qexp(.95, lambda$estimate)
+
+print(c(exp_5th,exp_95th))
+```
+
+Compare with the $\text{5}^{\text{th}}$ and $\text{95}^{\text{th}}$ percentiles of the empirical data.
+
+```{r}
+emp_5th <- quantile(train_house$X2ndFlrSF, .05)
+emp_95th <- quantile(train_house$X2ndFlrSF, .95)
+
+print(c(emp_5th,emp_95th))
+```
+
+### Part 3D: Modeling
+
+Build some type of multiple regression model and submit your model to the competition board. Provide your complete model summary and results with analysis.
+
+#### Part 3D1: Data Cleanup
+
+Resolve NA values and convert categorical variables into numeric. 
+
+For each of the categorical variables, we'll order the category dummy value in order from lowest average sale price to highest. This function will be used to evaluate the ordering of each category.
+
+
+```{r}
+
+examine <- function(col) {
+  print(train_house %>% group_by_at(col) %>% summarise(AvgSalePrice = mean(SalePrice), n = n()) %>% arrange(AvgSalePrice))
+}
+
+texamine <- function(col) {
+  print(test_house %>% group_by_at(col) %>% summarise(n = n()) %>% arrange(n))
+}
+
+examine('Neighborhood')
+
+```
+
+Creating a cleanup function that can be used on both the training and test sets to ensure the are cleaned the same way.
+
+```{r}
+house_clean <- function(df) {
+  df <- df %>%
+    mutate(MSSubClass = case_when(MSSubClass == 30 ~ 0, MSSubClass == 180 ~ 1,
+                                  MSSubClass == 45 ~ 2, MSSubClass == 190 ~ 3,
+                                  MSSubClass == 90 ~ 4, MSSubClass == 160 ~ 5,
+                                  MSSubClass == 50 ~ 6, MSSubClass == 85 ~ 7,
+                                  MSSubClass == 40 ~ 8, MSSubClass == 70 ~ 9,
+                                  MSSubClass == 80 ~ 10, MSSubClass == 20 ~ 11,
+                                  MSSubClass == 75 ~ 12, MSSubClass == 120 ~ 13,
+                                  MSSubClass == 150 ~ 14, MSSubClass == 60 ~ 15)) %>%
+    mutate(MSZoning = case_when(MSZoning == 'A' ~ 0, MSZoning == 'C' ~ 1,
+                                MSZoning == 'C (all)' ~ 1, MSZoning == 'I' ~ 2,
+                                MSZoning == 'RM' ~ 3, MSZoning == 'RH' ~ 4,
+                                MSZoning == 'RL' ~ 5, MSZoning == 'RP' ~ 6,
+                                MSZoning == 'FV' ~ 7, is.na(MSZoning) ~ 0)) %>%
+    mutate(Street = case_when(Street == 'Grvl' ~ 0, Street == 'Pave' ~ 1, is.na(Street) ~ 0)) %>%
+    mutate(Alley = case_when(Alley == 'Grvl' ~ 0, Alley == 'Pave' ~ 1, is.na(Alley) ~ 2)) %>%
+    mutate(LotShape = case_when(LotShape == 'Reg' ~ 0, LotShape == 'IR1' ~ 1,
+                                LotShape == 'IR3' ~ 2, LotShape == 'IR2' ~ 3)) %>%
+    mutate(LandContour = case_when(LandContour == 'Bnk' ~ 0, LandContour == 'Lvl' ~ 1,
+                                   LandContour == 'Low' ~ 2, LandContour == 'HLS' ~ 3)) %>%
+    mutate(Utilities = case_when(Utilities == 'ELO' ~ 0, Utilities == 'NoSeWa' ~ 1,
+                                 Utilities == 'NoSewr' ~ 2, Utilities == 'AllPub' ~ 3, is.na(Utilities) ~ 0)) %>%
+    mutate(LotConfig = case_when(LotConfig == 'Inside' ~ 0, LotConfig == 'FR2' ~ 1,
+                                 LotConfig == 'Corner' ~ 2, LotConfig == 'FR3' ~ 3,
+                                 LotConfig == 'CulDSac' ~ 4)) %>%
+    mutate(LandSlope = case_when(LandSlope == 'Gtl' ~ 0, LandSlope == 'Mod' ~ 1,
+                                 LandSlope == 'Sev' ~ 2)) %>%
+    mutate(Neighborhood = case_when(Neighborhood == 'MeadowV' ~ 0, Neighborhood == 'IDOTRR' ~ 1,
+                                     Neighborhood == 'BrDale' ~ 2, Neighborhood == 'BrkSide' ~ 3,
+                                     Neighborhood == 'Edwards' ~ 4, Neighborhood == 'OldTown' ~ 5,
+                                     Neighborhood == 'Sawyer' ~ 6, Neighborhood == 'Blueste' ~ 7,
+                                     Neighborhood == 'SWISU' ~ 8, Neighborhood == 'NPkVill' ~ 9,
+                                     Neighborhood == 'NAmes' ~ 10, Neighborhood == 'Mitchel' ~ 11,
+                                     Neighborhood == 'SawyerW' ~ 12, Neighborhood == 'NWAmes' ~ 13,
+                                     Neighborhood == 'Gilbert' ~ 14, Neighborhood == 'Blmngtn' ~ 15,
+                                     Neighborhood == 'CollgCr' ~ 16, Neighborhood == 'Crawfor' ~ 17,
+                                     Neighborhood == 'ClearCr' ~ 18, Neighborhood == 'Somerst' ~ 19,
+                                     Neighborhood == 'Veenker' ~ 20, Neighborhood == 'Timber' ~ 21,
+                                     Neighborhood == 'StoneBr' ~ 22, Neighborhood == 'NridgHt' ~ 23,
+                                     Neighborhood == 'NoRidge' ~ 24)) %>%
+    mutate(Condition1 = case_when(Condition1 == 'Artery' ~ 0, Condition1 == 'RRAe' ~ 1,
+                                  Condition1 == 'Feedr' ~ 2, Condition1 == 'RRAn' ~ 3,
+                                  Condition1 == 'Norm' ~ 4, Condition1 == 'RRNe' ~ 5,
+                                  Condition1 == 'RRNn' ~ 6, Condition1 == 'PosN' ~ 7,
+                                  Condition1 == 'PosA' ~ 8)) %>%
+    mutate(Condition2 = case_when(Condition2 == 'Artery' ~ 0, Condition2 == 'RRAe' ~ 1,
+                                  Condition2 == 'Feedr' ~ 2, Condition2 == 'RRAn' ~ 3,
+                                  Condition2 == 'Norm' ~ 4, Condition2 == 'RRNe' ~ 5,
+                                  Condition2 == 'RRNn' ~ 6, Condition2 == 'PosN' ~ 7,
+                                  Condition2 == 'PosA' ~ 8)) %>%
+    mutate(BldgType = case_when(BldgType == '2fmCon' ~ 0, BldgType == 'Twnhs' ~ 1,
+                                BldgType == 'Duplex' ~ 2, BldgType == 'TwnhsE' ~ 3,
+                                BldgType == '1Fam' ~ 4)) %>%
+    mutate(HouseStyle = case_when(HouseStyle == '1.5Unf' ~ 0, HouseStyle == 'SFoyer' ~ 1,
+                                  HouseStyle == '1.5Fin' ~ 2, HouseStyle == '2.5Unf' ~ 3,
+                                  HouseStyle == 'SLvl' ~ 4, HouseStyle == '1Story' ~ 5,
+                                  HouseStyle == '2Story' ~ 6, HouseStyle == '2.5Fin' ~ 7)) %>%
+    mutate(RoofStyle = case_when(RoofStyle == 'Gambrel' ~ 0, RoofStyle == 'Gable' ~ 1,
+                                 RoofStyle == 'Mansard' ~ 2, RoofStyle == 'Flat' ~ 3,
+                                 RoofStyle == 'Hip' ~ 4, RoofStyle == 'Shed' ~ 5)) %>%
+    mutate(RoofMatl = case_when(RoofMatl == 'Roll' ~ 0, RoofMatl == 'ClyTile' ~ 1,
+                                RoofMatl == 'CompShg' ~ 2, RoofMatl == 'Metal' ~ 3,
+                                RoofMatl == 'Tar&Grv' ~ 4, RoofMatl == 'WdShake' ~ 5,
+                                RoofMatl == 'Membran' ~ 6, RoofMatl == 'WdShngl' ~ 7)) %>%
+    mutate(Exterior1st = case_when(Exterior1st == 'BrkComm' ~ 0, Exterior1st == 'AsphShn' ~ 1,
+                                   Exterior1st == 'CBlock' ~ 2, Exterior1st == 'AsbShng' ~ 3,
+                                   Exterior1st == 'MetalSd' ~ 4, Exterior1st == 'Wd Sdng' ~ 5,
+                                   Exterior1st == 'WdShing' ~ 6, Exterior1st == 'PreCast' ~ 7,
+                                   Exterior1st == 'Stucco' ~ 8, Exterior1st == 'HdBoard' ~ 9,
+                                   Exterior1st == 'Plywood' ~ 10, Exterior1st == 'BrkFace' ~ 11,
+                                   Exterior1st == 'VinylSd' ~ 12, Exterior1st == 'CemntBd' ~ 13,
+                                   Exterior1st == 'Stone' ~ 14, Exterior1st == 'ImStucc' ~ 15,
+                                   Exterior1st == 'Other' ~ 16, is.na(Exterior1st) ~ 0)) %>%
+    mutate(Exterior2nd = case_when(Exterior2nd == 'Brk Cmn' ~ 0, Exterior2nd == 'AsphShn' ~ 1,
+                                   Exterior2nd == 'CBlock' ~ 2, Exterior2nd == 'AsbShng' ~ 3,
+                                   Exterior2nd == 'MetalSd' ~ 4, Exterior2nd == 'Wd Sdng' ~ 5,
+                                   Exterior2nd == 'Wd Shng' ~ 6, Exterior2nd == 'PreCast' ~ 7,
+                                   Exterior2nd == 'Stucco' ~ 8, Exterior2nd == 'HdBoard' ~ 9,
+                                   Exterior2nd == 'Plywood' ~ 10, Exterior2nd == 'BrkFace' ~ 11,
+                                   Exterior2nd == 'VinylSd' ~ 12, Exterior2nd == 'CmentBd' ~ 13,
+                                   Exterior2nd == 'Stone' ~ 14, Exterior2nd == 'ImStucc' ~ 15,
+                                   Exterior2nd == 'Other' ~ 16, is.na(Exterior2nd) ~ 0)) %>%
+    mutate(MasVnrType = case_when(MasVnrType == 'CBlock' ~ 0, MasVnrType == 'BrkCmn' ~ 1,
+                                  MasVnrType == 'None' ~ 2, MasVnrType == 'BrkFace' ~ 3,
+                                  MasVnrType == 'Stone' ~ 4, is.na(MasVnrType) ~ 0)) %>%
+    mutate(ExterQual = case_when(ExterQual == 'Po' ~ 0, ExterQual == 'Fa' ~ 1,
+                                 ExterQual == 'TA' ~ 2, ExterQual == 'Gd' ~ 3,
+                                 ExterQual == 'Ex' ~ 4, is.na(ExterQual) ~ 2)) %>%
+    mutate(ExterCond = case_when(ExterCond == 'Po' ~ 0, ExterCond == 'Fa' ~ 1,
+                                 ExterCond == 'TA' ~ 2, ExterCond == 'Gd' ~ 3,
+                                 ExterCond == 'Ex' ~ 4, is.na(ExterCond) ~ 2)) %>%
+    mutate(Foundation = case_when(Foundation == 'Slab' ~ 0, Foundation == 'BrkTil' ~ 1,
+                                  Foundation == 'CBlock' ~ 2, Foundation == 'Stone' ~ 3,
+                                  Foundation == 'Wood' ~ 4, Foundation == 'PConc' ~ 5)) %>%
+    mutate(BsmtQual = case_when(BsmtQual == 'Po' ~ 0, is.na(BsmtQual) ~ 1,
+                                 BsmtQual == 'Fa' ~ 2, BsmtQual == 'TA' ~ 3,
+                                 BsmtQual == 'Gd' ~ 4, BsmtQual == 'Ex' ~ 5)) %>%
+    mutate(BsmtCond = case_when(BsmtCond == 'Po' ~ 0, is.na(BsmtCond) ~ 1,
+                                 BsmtCond == 'Fa' ~ 2, BsmtCond == 'TA' ~ 3,
+                                 BsmtCond == 'Gd' ~ 4, BsmtCond == 'Ex' ~ 5)) %>%
+    mutate(BsmtExposure = case_when(is.na(BsmtExposure) ~ 0, BsmtExposure == 'No' ~ 1,
+                                 BsmtExposure == 'Mn' ~ 2, BsmtExposure == 'Av' ~ 3,
+                                 BsmtExposure == 'Gd' ~ 4)) %>%
+    mutate(BsmtFinType1 = case_when(is.na(BsmtFinType1) ~ 0, BsmtFinType1 == 'Rec' ~ 1,
+                                    BsmtFinType1 == 'BLQ' ~ 2, BsmtFinType1 == 'LwQ' ~ 3,
+                                    BsmtFinType1 == 'ALQ' ~ 4, BsmtFinType1 == 'Unf' ~ 5,
+                                    BsmtFinType1 == 'GLQ' ~ 6)) %>%
+    mutate(BsmtFinType2 = case_when(is.na(BsmtFinType2) ~ 0, BsmtFinType2 == 'Rec' ~ 1,
+                                    BsmtFinType2 == 'BLQ' ~ 2, BsmtFinType2 == 'LwQ' ~ 3,
+                                    BsmtFinType2 == 'ALQ' ~ 4, BsmtFinType2 == 'Unf' ~ 5,
+                                    BsmtFinType2 == 'GLQ' ~ 6)) %>%
+    mutate(Heating = case_when(Heating == 'Floor' ~ 0, Heating == 'Grav' ~ 1,
+                               Heating == 'Wall' ~ 2, Heating == 'OthW' ~ 3,
+                               Heating == 'GasW' ~ 4, Heating == 'GasA' ~ 5)) %>%
+    mutate(HeatingQC = case_when(HeatingQC == 'Po' ~ 0, HeatingQC == 'Fa' ~ 1,
+                                 HeatingQC == 'TA' ~ 2, HeatingQC == 'Gd' ~ 3,
+                                 HeatingQC == 'Ex' ~ 4)) %>%
+    mutate(CentralAir = case_when(CentralAir == 'N' ~ 0, CentralAir == 'Y' ~ 1)) %>%
+    mutate(Electrical = case_when(Electrical == 'Mix' ~ 0, Electrical == 'FuseP' ~ 1,
+                                  Electrical == 'FuseF' ~ 2, Electrical == 'FuseA' ~ 3,
+                                  Electrical == 'FuseA' ~ 4, Electrical == 'SBrkr' ~ 4,
+                                  is.na(Electrical) ~ 3)) %>%
+    mutate(KitchenQual = case_when(KitchenQual == 'Po' ~ 0, KitchenQual == 'Fa' ~ 1,
+                                   KitchenQual == 'TA' ~ 2, KitchenQual == 'Gd' ~ 3,
+                                   KitchenQual == 'Ex' ~ 4, is.na(KitchenQual) ~ 2)) %>%
+    mutate(Functional = case_when(Functional == 'Sal' ~ 0, Functional == 'Sev' ~ 1,
+                                  Functional == 'Maj2' ~ 2, Functional == 'Maj1' ~ 3,
+                                  Functional == 'Mod' ~ 4, Functional == 'Min2' ~ 5,
+                                  Functional == 'Min1' ~ 6, Functional == 'Typ' ~ 7,
+                                  is.na(Functional) ~ 7)) %>%
+    mutate(FireplaceQu = case_when(FireplaceQu == 'Po' ~ 0, is.na(FireplaceQu) ~ 1,
+                                   FireplaceQu == 'Fa' ~ 2, FireplaceQu == 'TA' ~ 3,
+                                   FireplaceQu == 'Gd' ~ 4, FireplaceQu == 'Ex' ~ 5)) %>%
+    mutate(GarageType = case_when(is.na(GarageType) ~ 0, GarageType == 'CarPort' ~ 1,
+                                   GarageType == 'Detchd' ~ 2, GarageType == '2Types' ~ 3,
+                                   GarageType == 'Basment' ~ 4, GarageType == 'Attchd' ~ 5,
+                                   GarageType == 'BuiltIn' ~ 6)) %>%
+    mutate(GarageFinish = case_when(is.na(GarageFinish) ~ 0, GarageFinish == 'Unf' ~ 1,
+                                    GarageFinish == 'RFn' ~ 2, GarageFinish == 'Fin' ~ 3)) %>%
+    mutate(GarageQual = case_when(GarageQual == 'Po' ~ 0, is.na(GarageQual) ~ 1,
+                                 GarageQual == 'Fa' ~ 2, GarageQual == 'TA' ~ 3,
+                                 GarageQual == 'Gd' ~ 4, GarageQual == 'Ex' ~ 5)) %>%
+    mutate(GarageCond = case_when(GarageCond == 'Po' ~ 0, is.na(GarageCond) ~ 1,
+                                 GarageCond == 'Fa' ~ 2, GarageCond == 'TA' ~ 3,
+                                 GarageCond == 'Gd' ~ 4, GarageCond == 'Ex' ~ 5)) %>%
+    mutate(PavedDrive = case_when(PavedDrive == 'N' ~ 0, PavedDrive == 'P' ~ 1,
+                                  PavedDrive == 'Y' ~ 2)) %>%
+    mutate(PoolQC = case_when(is.na(PoolQC) ~ 0, PoolQC == 'Fa' ~ 1,
+                              PoolQC == 'TA' ~ 2, PoolQC == 'Gd' ~ 3,
+                              PoolQC == 'Ex' ~ 4)) %>%
+    mutate(Fence = case_when(is.na(Fence) ~ 0, Fence == 'MnWw' ~ 1,
+                             Fence == 'GdWo' ~ 2, Fence == 'MnPrv' ~ 3,
+                             Fence == 'GdPrv' ~ 4)) %>%
+    mutate(MiscFeature = case_when(is.na(MiscFeature) ~ 0, MiscFeature == 'Othr' ~ 1,
+                                   MiscFeature == 'Elev' ~ 2, MiscFeature == 'Shed' ~ 3,
+                                   MiscFeature == 'Gar2' ~ 4, MiscFeature == 'TenC' ~ 5)) %>%
+    mutate(SaleType = case_when(SaleType == 'Oth' ~ 0, SaleType == 'ConLD' ~ 1,
+                                SaleType == 'ConLw' ~ 2, SaleType == 'COD' ~ 3,
+                                SaleType == 'WD' ~ 4, SaleType == 'ConLI' ~ 5,
+                                SaleType == 'VWD' ~ 6, SaleType == 'CWD' ~ 7,
+                                SaleType == 'Con' ~ 8, SaleType == 'New' ~ 9,
+                                is.na(SaleType) ~ 4)) %>%
+    mutate(SaleCondition = case_when(SaleCondition == 'AdjLand' ~ 0, SaleCondition == 'Alloca' ~ 1,
+                                     SaleCondition == 'Family' ~ 2, SaleCondition == 'Abnorml' ~ 3,
+                                     SaleCondition == 'Partial' ~ 4, SaleCondition == 'Normal' ~ 5)) %>%
+    mutate(MasVnrArea = ifelse(is.na(MasVnrArea),0,MasVnrArea)) %>%
+    mutate(LotFrontage = ifelse(is.na(LotFrontage),0,LotFrontage)) %>%
+    mutate(GarageYrBlt = ifelse(is.na(GarageYrBlt),0,GarageYrBlt)) %>%
+    mutate(GarageCars = ifelse(is.na(GarageCars),0,GarageCars)) %>%
+    mutate(BsmtFinSF1 = ifelse(is.na(BsmtFinSF1),0,BsmtFinSF1))
+  
+  return(df)
+}
+
+my_train_house <- house_clean(train_house)
+str(my_train_house)
+```
+
+#### Part 3D2: Identify variables to include in model
+
+```{r}
+cor_house <- cor(my_train_house)
+corrplot(cor_house, type = 'upper')
+```
+
+Filter out variables with less than .25 correlation.
+
+```{r}
+cor_house_df <- data.frame(cor_house)['SalePrice'] %>%
+  filter(SalePrice > .25) %>%
+  arrange(desc(SalePrice))
+
+cor_house_df
+```
+
+#### Part 3D3: Create Linear Model
+
+Build the model with all of the variables that have moderate correlation.
+
+```{r}
+(lm_cols <- rownames(cor_house_df %>% arrange()))
+
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + GrLivArea + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + TotalBsmtSF + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + YearRemodAdd + Foundation + 
+                       GarageType + MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + OpenPorchSF + MSZoning + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+#### Part 3D4: Backward Elimination
+
+I will proceed with backward elimination.
+
+```{r}
+# Removing OpenPorchSF
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + GrLivArea + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + TotalBsmtSF + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + YearRemodAdd + Foundation + 
+                       GarageType + MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + MSZoning + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing TotalBsmtSF
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + GrLivArea + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + YearRemodAdd + Foundation + 
+                       GarageType + MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + MSZoning + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing MSZoning
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + GrLivArea + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + YearRemodAdd + Foundation + 
+                       GarageType + MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GrLivArea
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + YearRemodAdd + Foundation + 
+                       GarageType + MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GarageType
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + YearRemodAdd + Foundation + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing YearRemodAdd
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + Foundation + 
+                       GarageType + MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GarageType
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + Foundation + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + Exterior2nd + WoodDeckSF + X2ndFlrSF + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing Exterior2nd
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + Foundation + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + HalfBath + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing HalfBath
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + Foundation + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageCond + GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GarageCond
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + Foundation + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + HouseStyle + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing HouseStyle
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + Foundation + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing Foundation
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + GarageArea + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GarageArea
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + Fireplaces + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing Fireplaces
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GarageFinish
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtFinType1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing BsmtFinType1
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FullBath + GarageFinish + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing GarageFinish
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FullBath + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt + CentralAir)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing CentralAir
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FullBath + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing FullBath
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       Exterior1st + WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing Exterior1st
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       WoodDeckSF + X2ndFlrSF + GarageQual + LotShape + LotArea + 
+                       GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing LotShape
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + MasVnrType + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       WoodDeckSF + X2ndFlrSF + GarageQual + LotArea + GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing MasVnrType
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + TotRmsAbvGrd + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       WoodDeckSF + X2ndFlrSF + GarageQual + LotArea + GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing TotRmsAbvGrd
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + HeatingQC + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       WoodDeckSF + X2ndFlrSF + GarageQual + LotArea + GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+```{r}
+# Removing HeatingQC
+house_model.lm <- lm(data = my_train_house, formula = SalePrice ~ OverallQual + Neighborhood + ExterQual + KitchenQual + GarageCars + 
+                       BsmtQual + X1stFlrSF + FireplaceQu + YearBuilt + 
+                       MSSubClass + MasVnrArea + BsmtFinSF1 + BsmtExposure + SaleType + 
+                       WoodDeckSF + X2ndFlrSF + GarageQual + LotArea + GarageYrBlt)
+
+summary(house_model.lm)
+```
+
+#### Part 3D5: Evaluate Model
+
+All of the remaining variables have p-values less than .05. The Adjusted $R^2$ value indicates that these variables are accounting for 82% of the variation in Sale Price.
+
+```{r}
+plot(fitted(house_model.lm),resid(house_model.lm))
+```
+
+```{r}
+qqnorm(resid(house_model.lm))
+qqline(resid(house_model.lm))
+```
+
+The QQ-plot shows that the model is nearly normal within the $\pm2$ standard deviations, only deviating at the ends. 
+
+#### Part 3D6: Predict Test Dataset
+
+```{r}
+my_test_house <- house_clean(test_house)
+
+house_prediction <- predict(house_model.lm, newdata = my_test_house)
+summary(house_prediction)
+```
+
+#### Part 3D7: Submit Predictions
+
+Clearly we can't have a home sale price less than 0, so that will be an issue. Lets examine the record.
+
+```{r}
+test_house[757,c('OverallQual','Neighborhood','ExterQual','KitchenQual','GarageCars','BsmtQual','X1stFlrSF','FireplaceQu','YearBuilt','MSSubClass','MasVnrArea','BsmtFinSF1','BsmtExposure','SaleType','WoodDeckSF','X2ndFlrSF','GarageQual','LotArea','GarageYrBlt')]
+```
+
+Overall Quality is poor, and it is in a weak neighborhood with a number of fair quality features, these all explain the low price.
+
+Create the csv for submission.
+
+```{r}
+house_prediction_df <- as.data.frame(house_prediction)
+house_prediction_df$Id <- test_house$Id
+write.csv(house_prediction_df[,c(2,1)],'house_submission.csv',row.names = FALSE, quote = FALSE)
+```
+
+Submitted results to kaggle, https://www.kaggle.com/donaldbutler95/competitions, and was scored at .31130.
+
+![Kaggle Submission](.\kaggle Submission - Home Prices.png)
+

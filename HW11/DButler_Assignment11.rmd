@@ -1,0 +1,68 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "05/07/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Assignment 11
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Regression Analysis
+
+Using the cars dataset in R, build a linear model for stopping distance as a function of speed and replicate the analysis of your textbook Chapter 3 (visualization, quality evaluation of the model, and residual analysis).
+
+### Load cars dataset
+
+The cars dataset was collected in the 1920s and contains the speed in miles per hour and the stopping distance in feet.
+
+```{r}
+summary(cars)
+```
+
+## Construct Linear Model
+
+```{r}
+cars.lm = lm(formula = dist ~ speed, data = cars)
+plot(formula = dist ~ speed, data = cars, main = 'Speed vs Stopping Distance', xlab = 'Speed (mph)', ylab = 'Stopping Distance (ft)')
+abline(cars.lm)
+
+```
+
+### Model Evaluation
+
+```{r}
+summary(cars.lm)
+```
+
+The p-value of 1.5e-12 is less than .05 which indicates that speed is a significant variable. The $R^2$ value indicates that variations in speed account for 65% of the variation in stopping distance. The inter-quartile range is consistent with the residual standard error which supports that the residuals are normally distributed.
+
+### Residual Analysis
+
+Viewing a histogram of the residuals shows that they are nearly normal centered at 0.
+
+```{r}
+hist(resid(cars.lm))
+```
+
+The residuals appear to have constant variability.
+
+```{r}
+plot(fitted(cars.lm),resid(cars.lm))
+```
+
+The Q-Q plot of residuals shows that they are distributed nearly normal. There are a few outliers at higher speeds, but not too concerning.
+
+```{r}
+qqnorm(resid(cars.lm))
+qqline(resid(cars.lm))
+```
+

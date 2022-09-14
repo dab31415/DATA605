@@ -1,0 +1,49 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "05/07/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Discussion 14
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 8.8 Question 29
+
+Use the Taylor series given in Key Idea 8.8.1 to find the first 4 terms of the Taylor series of the function $f(x) = e^x\sin(x)$.
+
+$$e^x =\sum_{n=0}^{\infty}\frac{x^n}{n!} = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \frac{x^4}{4!} + ...$$
+
+
+$$\sin(x) = \sum_{n=0}^{\infty} (-1)^n \frac{x^{2n+1}}{(2n+1)!} = x - \frac{x^3}{3!} + ...$$
+
+Multiplying term by term to find coefficients up to the $x^4$ term.
+
+$$e^x \sin(x) = x - \frac{x^3}{3!} + x^2 - \frac{x^4}{3!} + \frac{x^3}{2!} + \frac{x^4}{3!}$$
+
+Combining like terms we get:
+
+$$e^x \sin(x) = x + x^2 + \frac{2x^3}{3!}$$
+
+Another method for solving this problem would be to use the chain rule and calculate the first 4 derivatives.
+
+$\begin{aligned}
+f(x) & = e^x\sin(x) & \Rightarrow f(0) & = 0 \\
+f'(x) & = e^x\cos(x) + e^x\sin(x) & \Rightarrow f'(0) & = 1 \\
+f''(x) & = 2e^x\cos(x) & \Rightarrow f''(0) & = 2 \\
+f'''(x) & = -2e^x\sin(x) + 2e^x\cos(x) & \Rightarrow f'''(0) & = 2 \\
+f''''(x) & = -4e^x\sin(x) & \Rightarrow f''''(0) & = 0
+\end{aligned}$
+
+This gives us:
+
+$$e^x \sin(x) = \frac{0}{0!} + \frac{1}{1!}x + \frac{2}{2!}x^2 + \frac{2}{3!}x^3 + \frac{0}{4!}x^4 = x + x^2 + \frac{2x^3}{3!}$$
+

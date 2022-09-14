@@ -1,0 +1,62 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "04/03/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Discussion 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This power function will be used to perform repeated multiplication of our transition matrix.
+
+```{r}
+power <- function(m, k) {
+  r <- m
+  for (i in 2:k) {
+    r <- r %*% m
+  }
+  return(r)
+}
+```
+
+# Chapter 11.3 Exercise 5
+
+Find the fixed probability vector $w$ for each of the following regular matrices.
+
+## a
+
+```{r}
+(p <- matrix(c(3/4,1/2,1/4,1/2),2,2))
+power(p,1000)
+```
+
+$w = (2/3, 1/3)$
+
+\newpage
+
+## b
+
+```{r}
+(p <- matrix(c(9/10,1/10,1/10,9/10),2,2))
+power(p,1000)
+```
+$w = (1/2, 1/2)$
+
+## c
+
+```{r}
+(p <- matrix(c(3/4,0, 1/4, 1/4, 2/3, 1/4, 0, 1/3, 1/2),3,3))
+power(p,1000)
+```
+
+$w = (2/7, 3/7, 2/7)$
+

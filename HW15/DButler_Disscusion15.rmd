@@ -1,0 +1,31 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "05/08/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Discussion 15
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 12.3 Question 15
+
+Find the first and second partial derivatives for the function $f(x,y) = \sin x \cos y$.
+
+$\begin{aligned}
+f_x(x,y) & = \cos x \cos y \\
+f_y(x,y) & = -\sin x \sin y \\
+f_{xx}(x,y) & = -\sin x \cos y \\
+f_{yy}(x,y) & = -\sin x \cos y \\
+f_{xy}(x,y) & = -\cos x \sin y \\
+f_{yx}(x,y) & = -\cos x \sin y
+\end{aligned}$
+

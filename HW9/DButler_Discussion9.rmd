@@ -1,0 +1,28 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "03/27/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Discussion 9
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 9.1 Exercise 5
+
+A rookie is brought to a baseball club on the assumption that he will have a .300 batting average. In the first year, he comes to bat 300 times and his batting average is .267. Assume that his at bats can be considered Bernoulli trials with probability .3 for success. Could such a low average be considered just bad luck or should he be sent back to the minor leagues?
+
+A batting average of .267 on 300 at bats would mean he had 80 hits. 
+
+```{r}
+pbinom(80, 300, .3)
+```
+

@@ -1,0 +1,41 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+subtitle: 'Discussion 7'
+author: 'Donald Butler'
+date: '03/12/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 5.2 Exercise 26
+
+Bridies' Bearing Works manufacturers bearing shafts whose diameters are normally distributed with parameters $\mu = 1$, $\sigma = .002$. The buyer's specifications require these diameters to be $1.000 \pm .003$ cm. What fraction of the manufacturer's shafts are likely to be rejected?
+
+Since the distribution is normal, P(X<.997) = P(X>1.003), so we can double the left tail calculation to determine the percentage that are rejected.
+
+```{r}
+mean <- 1
+sd <- .002
+reject <- .003
+
+2 * pnorm(mean - reject, mean, sd)
+```
+
+If the manufacturer improves her quality control, she can reduce the value of $\sigma$. What value of $\sigma$ will ensure that no more than 1 percent of her shafts are likely to be rejected?
+
+Using qnorm, we can find the number of standard deviations needed to have less than .005 in each tail, then divide that into .003 to find the standard deviation needed to produce less than 1% rejection.
+
+```{r}
+(new_sd <- -.003 / qnorm(.005))
+
+2 * pnorm(mean - reject, mean, new_sd)
+```
+
+
+

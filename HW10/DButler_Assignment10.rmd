@@ -1,0 +1,121 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "04/03/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Assignment 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This power function will be used to perform repeated multiplication of our transition matrix.
+
+```{r}
+power <- function(m, k) {
+  r <- m
+  for (i in 2:k) {
+    r <- r %*% m
+  }
+  return(r)
+}
+
+simulate_chain <- function(m, max_k) {
+  r <- m
+  for (i in 2:max_k) {
+    new_r <- r %*% m
+    if (all(new_r == r)) {
+      break
+    }
+    r <- new_r
+  }
+  print(i-1)
+  return(r)
+}
+```
+
+
+
+# Problem 1.
+
+Smith is in jail and has 1 dollar; he can get out on bail if he has 8 dollars. A guard agrees to make a series of bets with him. If Smith bets $A$ dollars, he wins $A$ dollars with a probability .4 and loses $A$ dollars with probability .6. Find the probability that he wins 8 dollars before losing all of his money if:
+
+We will construct the transition matrix as a 9x9 where the row and column represents the number of dollars that Smith has. The first row, and column, represents 0 dollars and the 9th row represents 8 dollars, which is enough to post bail. If Smith has 0 dollars remaining, he will be unable to place more bets, so he has 100% chance of remaining with 0 dollars. Similarly, if he has 8 dollars, he has enough to post bail and doesn't need to make more bets. We see that this is an absorbing chain with final states either \$0 or \$8.
+
+## a. he bets 1 dollar each time (timid strategy)
+
+When Smith has between 1 and 7 dollars, he will bet \$1 and has a 40% chance of winning.
+
+Here is the transitional matrix for the timid strategy.
+
+```{r}
+t_timid = rbind(c(1,0,0,0,0,0,0,0,0),
+                c(.6,0,.4,0,0,0,0,0,0),
+                c(0,.6,0,.4,0,0,0,0,0),
+                c(0,0,.6,0,.4,0,0,0,0),
+                c(0,0,0,.6,0,.4,0,0,0),
+                c(0,0,0,0,.6,0,.4,0,0),
+                c(0,0,0,0,0,.6,0,.4,0),
+                c(0,0,0,0,0,0,.6,0,.4),
+                c(0,0,0,0,0,0,0,0,1))
+
+t_timid
+
+simulate_chain(t_timid,10000)
+```
+
+We will repeatedly multiply the transition matrix to generate the probability of reaching each final state.
+
+```{r}
+t_timid_10000 <- power(t_timid,10000)
+t_timid_10000
+```
+
+Since Smith starts with \$1, he has a 2.03% chance of earning enough to post bail.
+
+## b. he bets, each time, as much as possible but not more than necessary to bring his fortune up to 8 dollars (bold strategy)
+
+Here is the transitional matrix for the bold strategy.
+
+```{r}
+t_bold = rbind(c(1,0,0,0,0,0,0,0,0),
+               c(.6,0,.4,0,0,0,0,0,0),
+               c(.6,0,0,0,.4,0,0,0,0),
+               c(.6,0,0,0,0,0,.4,0,0),
+               c(.6,0,0,0,0,0,0,0,.4),
+               c(0,0,.6,0,0,0,0,0,.4),
+               c(0,0,0,0,.6,0,0,0,.4),
+               c(0,0,0,0,0,0,.6,0,.4),
+               c(0,0,0,0,0,0,0,0,1))
+
+t_bold
+```
+
+Looking at this matrix, it's interesting to note that it is impossible to reach the states of \$1, \$3, \$5, or \$7. 
+
+Again, we will repeatedly multiply the transition matrix to generate the probability of reaching each final state.
+
+```{r}
+t_bold_10000 <- power(t_bold,10000)
+t_bold_10000
+```
+
+Since Smith starts with \$1, he has a 6.4% chance of earning enough to post bail.
+
+It's interesting to note that in this case, starting with \$1, we only needed to raise the transition matrix to the third power, because if Smith lost any of his first 3 bets, he'd be at \$0, so the only way to reach \$8 is to win all 3 bets. Constructing a tree diagram for each possible starting amount, shows that 3 is the most needed for any amount. You can see that this is the case because the $t_{bold}^3 = t_{bold}^{10000}$.
+
+```{r}
+t_bold_3 <- power(t_bold, 3)
+t_bold_3
+```
+
+## Which strategy gives Smith the better chance of getting out of jail?
+
+The bold strategy gives Smith the better chance. It's easy to see why that is the case because in the timid strategy he needs to win at least 7 bets, while in the bold strategy he only needs to win 3.

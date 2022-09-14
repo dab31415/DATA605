@@ -1,0 +1,73 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+subtitle: 'Assignment 7'
+author: 'Donald Butler'
+date: '03/12/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1.
+
+Let $X_1$, $X_2$, ..., $X_n$ be $n$ mutually independent random variables, each of which is uniformly distributed on the integers from $1$ to $k$. Let $Y$ denote the minimum of the $X_i$s. Find the distribution of $Y$.
+
+The distribution of $Y$ is discrete on the interval $[1,k]$ and can be calculated by finding the probability that the minimum value of the $X_i$s each value. There are $k^n$ ways of selecting the $X_i$ values. For $1 \le j \le k$, the number of ways that each $X_i$ can be selected so that the minimum value is $j$, is the number of ways that $X_i \ge j$ minus the ways that $X_i > j$. So, the distribution of $Y$ is:
+$$\frac{(k-j+1)^n - (k-j)^n}{k^n}, 1 \le j \le k$$
+
+# Problem 2.
+
+Your organization owns a copier (future lawyers, etc.) or MRI (future doctors). This machine has a manufacturer's expected lifetime of 10 years. This means that we expect one failure every ten years.
+
+## Part a. (geometric)
+
+What is the probability that the machine will fail after 8 years?
+
+```{r}
+p <- .1
+
+(prob_fail_after_8 <- (1-p)^8)
+(ev <- 1/p)
+(sd <- sqrt((1-p)/p^2))
+```
+
+## Part b. (exponential)
+
+What is the probability that the machine will fail after 8 years?
+
+```{r}
+p <- .1
+
+(prob_fail_after_8 <- 1 - pexp(8,p))
+(ev <- 1/p)
+(sd <- sqrt(1/p^2))
+```
+
+## Part c. (binomial)
+
+What is the probability that the machine will fail after 8 years?
+
+```{r}
+p <- .1
+
+(prob_fail_after_8 <- dbinom(0,8,p))
+(ev <- 8 * p)
+(sd <- sqrt(8 * p * (1-p)))
+```
+
+## Part d. (poisson)
+
+What is the probability that the machine will fail after 8 years?
+
+```{r}
+p <- .1
+
+(prob_fail_after_8 <- dpois(0,8 * p))
+(ev <- 8 * p)
+(sd <- sqrt(8 * p))
+```

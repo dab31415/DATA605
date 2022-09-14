@@ -1,0 +1,36 @@
+---
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+---
+
+Let me try to clear up how to get the eigenvectors from the eigenvalues.
+
+We first started with the equation $Cx = \lambda{}x$ and you performed operations to rewrite that equation into the form $(C-\lambda{}I)x = 0$. Now that you've found the eigenvalues, we need to find the corresponding eigenvectors that satisfy the equation. Rewriting the equation in vector components we get the following:
+
+$$\begin{bmatrix}-1-\lambda{} & 2 \\ -6 & 6-\lambda{}\end{bmatrix}\begin{bmatrix}v_1 \\ v_2\end{bmatrix} = \begin{bmatrix}0 \\ 0\end{bmatrix}$$
+
+If we substitute your first eigenvalue of 2 into the equation, we get:
+
+$$\begin{bmatrix}-3 & 2 \\ -6 & 4\end{bmatrix}\begin{bmatrix}v_1 \\ v_2\end{bmatrix} = \begin{bmatrix}0 \\ 0\end{bmatrix}$$
+
+If we multiply this out we get two equations with two unknowns, $-3v_1+2v_2=0$ and $-6v_1+4v_2=0$. But this isn't very helpful, so we put the matrix in reduced row echelon form. You did this with the row operation $-2R_1+R_2$, which corresponds to the transformation matrix $\begin{bmatrix}1 & 0 \\ -2 & 1\end{bmatrix}$. So we apply this transformation to both sides of the equation above and we get this:
+
+
+$$\begin{bmatrix}1 & 0 \\ -2 & 1\end{bmatrix}\begin{bmatrix}-3 & 2 \\ -6 & 4\end{bmatrix}\begin{bmatrix}v_1 \\ v_2\end{bmatrix} = \begin{bmatrix}1 & 0 \\ -2 & 1\end{bmatrix}\begin{bmatrix}0 \\ 0\end{bmatrix} \\ \begin{bmatrix}-3 & 2 \\ 0 & 0\end{bmatrix}\begin{bmatrix}v_1 \\ v_2\end{bmatrix} = \begin{bmatrix}0 \\ 0\end{bmatrix}$$
+
+You then completed another transformation $-\frac{1}{3}R_1$, which corresponds to the transformation matrix $\begin{bmatrix}-\frac{1}{3} & 0 \\ 0 & 1\end{bmatrix}$. So again, we apply the transformation matrix to both sides of the equation above and we get this:
+
+$$\begin{bmatrix}-\frac{1}{3} & 0 \\ 0 & 1\end{bmatrix}\begin{bmatrix}-3 & 2 \\ 0 & 0\end{bmatrix}\begin{bmatrix}v_1 \\ v_2\end{bmatrix} = \begin{bmatrix}-\frac{1}{3} & 0 \\ 0 & 1\end{bmatrix}\begin{bmatrix}0 \\ 0\end{bmatrix} \\ \begin{bmatrix}1 & -\frac{2}{3} \\ 0 & 0\end{bmatrix}\begin{bmatrix}v_1 \\ v_2\end{bmatrix} = \begin{bmatrix}0 \\ 0\end{bmatrix}$$
+
+If we multiply this equation out, we have two equations, $v_1-\frac{2}{3}v_2=0$ and $0v_1+0v_2=0$, but the second equation no longer provides any information to the system, so we can rewrite the first one to $v_1=\frac{2}{3}v_2$ and this describes the relationship of the two components that make up the vector. So the eigenspace corresponding to $\lambda{}=2$ is the set of vectors of the form $\begin{bmatrix}\frac{2}{3}v_2 \\ v_2\end{bmatrix}$. Since the span of the vector is all of the scalar multiples, we can factor out the fraction and write it as:
+
+$$\xi_A(2) = \left \langle \begin{bmatrix}2 \\ 3\end{bmatrix} \right \rangle$$
+
+You can perform the same analysis with the second eigenvalue.
+

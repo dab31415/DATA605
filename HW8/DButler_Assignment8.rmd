@@ -1,0 +1,96 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+subtitle: 'Assignment 8'
+author: 'Donald Butler'
+date: '03/20/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1.
+
+A company buys 100 light bulbs, each of which has an exponential lifetime of 1000 hours. What is the expected time for the first of these bulbs to burn out?
+
+```{r}
+bulbs <- 100
+expected_lifetime <- 1000
+rate <- 1/expected_lifetime
+trials <- 50000
+
+results <- array(dim = trials)
+for (trial in 1:trials) {
+  results[trial] <- min(rexp(bulbs, rate))
+}
+
+mean(results)
+```
+
+# Problem 2.
+
+Assume that $X_1$ and $X_2$ are independent random variables, each having an exponential density with parameter $\lambda$. Show that $Z = X_1 - X_2$ has density $$f_Z(z) = (\frac{1}{2})\lambda e^{-\lambda |z|}$$.
+
+$$f_{X_1}(x) = f_{X_2}(x) = \begin{cases}\lambda e^{-\lambda x}, &\text{if }x \ge 0, \\ 0, &\text{otherwise};\end{cases}$$
+
+$$f_{X_1}(x_1)*f_{X_2}(x_2) = \lambda^2e^{-\lambda(x_1+x_2)}$$
+
+Since $Z = X_1 - X_2$, $x_1 = z+x_2$. $\lambda^2e^{-\lambda((z+x_2)+x_2)}=\lambda^2e^{-\lambda(z+2x_2)}$.
+
+If $z \ge 0$, $x_2 \ge 0$, so $\int_0^{\infty} \lambda^2e^{-\lambda(z+2x_2)} = \frac{\lambda}{2}e^{-\lambda z}$.
+
+Since $X_1$ and $X_2$ are independent, the distribution of $X_1 - X_2$ is the same as $X_2 - X_1$. This means that $f_Z(z) = f_Z(-z)$, so $$f_Z(z) = \frac{\lambda}{2}e^{-\lambda |z|}$$
+
+
+# Problem 3.
+
+Let $X$ be a continuous random variable with mean $\mu = 10$ and variance $\sigma^2 = 100/3$. Using Chebyshev's Inequality, find an upper bound for the following probabilities.
+
+> **Theorem 8.3 (Chebyshev Inequality)**
+  Let $X$ be a continuous random variable with density function $f(x)$. Suppose $X$ has a finite expected value $\mu = E(X)$ and finite variance $\sigma^2 = V(X)$. Then for any positive number $\epsilon > 0$ we have $$P(|X-\mu|\ge \epsilon)\le \frac{\sigma^2}{\epsilon^2}$$.
+
+
+## a.
+
+$P(|X-10| \ge 2)$.
+
+```{r}
+V = 100/3
+e = 2
+V/e^2
+```
+
+## b.
+
+$P(|X-10| \ge 5)$.
+
+```{r}
+V = 100/3
+e = 5
+V/e^2
+```
+
+## c.
+
+$P(|X-10| \ge 9)$.
+
+```{r}
+V = 100/3
+e = 9
+V/e^2
+```
+
+## d.
+
+$P(|X-10| \ge 20)$.
+
+```{r}
+V = 100/3
+e = 20
+V/e^2
+```
+

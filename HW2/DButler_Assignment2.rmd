@@ -1,0 +1,142 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+subtitle: 'Assignment 2'
+author: 'Donald Butler'
+date: '02/04/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem Set 1
+
+1. Show that $A^{T}A \neq AA^T$ in general.  
+
+Let A be an m $\times$ n matrix such that $m \neq n$. $A^T$ has dimensions n $\times$ m. $AA^T$ has dimensions m $\times$ m and $A^{T}A$ has dimensions n $\times$ n. Since $m \neq n$, the dimensions of $AA^T$ and $A^{T}A$ are not the same, therefore $A^{T}A \neq AA^T$.
+
+2. For a special type of square matrix A, we get $A^{T}A = AA^T$ . Under what conditions could this be true?  
+
+This would be true for all symmetric matrices because $A = A^T$ would imply that $A^{T}A = AA^T$. 
+
+# Problem Set 2
+
+Write an R function to factorize a square matrix A into LU or LDU, whichever you prefer.  
+
+```{r}
+
+LU <- function(A, debug=FALSE) {
+  if (nrow(A) != ncol(A)) {
+    return ("A is not square")
+  }
+
+  n <- ncol(A)
+  U <- A
+  L <- diag(n)
+  
+  for (col in c(1:(n-1))) {
+    if (U[col,col] == 0) {
+      # needs a row swap to get a non-zero element in position U[col,col]
+      if (debug) {
+        print(sprintf("needs row swap in col %s U=",col))
+        print(U)
+      }
+      for (row in c((col+1):n)) {
+        if (U[row,col] != 0) {
+          E <- diag(n)
+          E[col,col] <- 0
+          E[row,row] <- 0
+          E[col,row] <- 1
+          E[row,col] <- 1
+          U <- E %*% U
+          L <- L %*% solve(E)
+          if (debug) {
+            print(sprintf("row swap complete with row %s U=",row))
+            print(U)
+          }
+          break # break from the row swap loop
+        }
+      }
+    }
+
+    if (U[col,col] == 0) {
+      # All elements in col are 0
+      if (debug) {
+        print(sprintf("entire col %s is 0 U=",col))
+        print(U)
+      }
+    } else {
+      for (row in c((col+1):n)) {
+        if (U[row,col] == 0) {
+          if (debug) {
+            print(sprintf("eliminating row %s col %s is not needed",row,col))
+            print("U=")
+            print(U)
+          }
+        } else {
+          E <- diag(n)
+          E[row,col] <- -1 * U[row,col] / U[col,col]
+          if (debug) {
+            print(sprintf("elminating row %s col %s E=",row,col))
+            print(E)
+          }
+          U <- E %*% U
+          L <- L %*% solve(E)
+          if (debug) {
+            print("U=")
+            print(U)
+          }
+        }
+      }
+    }
+  }
+  return (list(L=L,U=U))
+}
+
+```
+
+
+## LU Testing 1
+
+Using the $3 \times 3$ example from the Weekly Materials.
+
+```{r}
+
+A <- matrix(c(1,2,3,1,1,1,2,0,1),nrow=3)
+r = LU(A)
+print(r[1])
+print(r[2])
+r[1]$L %*% r[2]$U == A
+```
+
+## LU Testing 2
+
+Test a matrix with a zero in a pivot to verify the row swap functionality. 
+
+```{r}
+A <- matrix(c(0,2,3,1,1,1,2,0,1),nrow=3)
+r = LU(A)
+print(r[1])
+print(r[2])
+r[1]$L %*% r[2]$U == A
+```
+
+Testing my function with this matrix produced a valid upper-triangular matrix but L was not a lower-triangular matrix. I suspect my pivoting technique is not correct even though I am getting an LU=A result.
+
+## LU Testing 3
+
+Testing with a higher order matrix
+
+```{r}
+A <- matrix(c(1,2,3,4,2,4,3,1,3,2,1,4,4,2,1,3),nrow=4)
+r = LU(A)
+print(r[1])
+print(r[2])
+r[1]$L %*% r[2]$U == A
+
+```
+

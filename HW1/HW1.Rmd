@@ -1,0 +1,150 @@
+---
+title: "HW1"
+author: "Donald Butler"
+date: '01/29/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Create plot of Initials
+
+Create a plot of the initials in my first and last name.
+
+```{r}
+
+x=c(rep(-1.25,500),
+    cos(seq(-pi/2,pi/2,length.out=500))-1.25,
+    rep(.25,500),
+    seq(.25,.75,length.out=500),
+    seq(.25,.75,length.out=500),
+    seq(.25,.75,length.out=500),
+    .5*cos(seq(-pi/2,pi/2,length.out=500))+.75,
+    .5*cos(seq(-pi/2,pi/2,length.out=500))+.75)
+
+y=c(seq(-1,1,length.out=500),
+    sin(seq(-pi/2,pi/2,length.out=500)),
+    seq(-1,1,length.out=500),
+    rep(-1,500),
+    rep(0,500),
+    rep(1,500),
+    .5*sin(seq(-pi/2,pi/2,length.out=500))+.5
+    ,.5*sin(seq(-pi/2,pi/2,length.out=500))-.5)
+
+z=rbind(x,y)
+
+plot(y~x, xlim=c(-3,3), ylim=c(-3,3))
+```
+
+# Create leftMultiply function
+
+Create a function that will left multiply a square matrix against the vector of points. 
+
+```{r}
+leftMultiply <- function(x,y) {
+  x %*% y
+}
+
+leftMultiply(diag(3),matrix(seq(1,9), nrow=3, ncol = 3))
+```
+
+# Shear
+
+## Horizontal Shear
+
+Horizontal shear is a mapping that takes points (x,y) to (x+my,y). 
+
+```{r}
+x11()
+
+for (shear_factor in seq(0,5,length.out=25)) {
+  transZ <- apply(z,2,function(x) leftMultiply(matrix(c(1,0,shear_factor,1),nrow = 2, ncol = 2),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+
+```
+
+## Vertical Shear
+
+Vertical shear is a mapping that takes points (x,y) to (x,mx+y).
+
+```{r}
+x11()
+
+for (shear_factor in seq(0,5,length.out=25)) {
+  transZ <- apply(z,2,function(x) leftMultiply(matrix(c(1,shear_factor,0,1),nrow = 2, ncol = 2),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+
+```
+
+# Scaling
+
+Scaling allows us to apply a scaling factor to x or y coordinate. If the scaling factor is less than 1, the image will shrink. If the scaling factor is greater than 1, the image will stretch.
+
+## Stretching horizontally 
+
+```{r}
+x11()
+
+for (scaling_factor in seq(1,5,length.out=25)) {
+  transZ <- apply(z,2,function(x) leftMultiply(matrix(c(scaling_factor,0,0,1),nrow = 2, ncol = 2),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+```
+
+## Shrinking vertically
+
+```{r}
+x11()
+
+for (scaling_factor in seq(1,0,length.out=25)) {
+  transZ <- apply(z,2,function(x) leftMultiply(matrix(c(1,0,0,scaling_factor),nrow = 2, ncol = 2),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+```
+
+## Scaling Uniformily both directions
+
+```{r}
+x11()
+
+for (scaling_factor in seq(5,0,length.out=25)) {
+  transZ <- apply(z,2,function(x) leftMultiply(matrix(c(scaling_factor,0,0,scaling_factor),nrow = 2, ncol = 2),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+```
+
+# Rotation
+
+The rotation mapping applies trigonometric functions to rotate around the origin. The mapping takes points (x,y) to (x * cos($\theta$) + y * sin($\theta$), -x * sin($\theta$) + y * cos($\theta$)).
+
+```{r}
+x11()
+
+for (theta in seq(0,2*pi,length.out=50)) {
+  transZ <- apply(z,2,function(x) leftMultiply(matrix(c(cos(theta),-sin(theta),sin(theta),cos(theta)),nrow = 2, ncol = 2),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+```
+
+# Projection
+
+We will project around the y axis as if the left side of the image is coming off the screen, and the right side is going into the screen.
+
+```{r}
+x11()
+
+z3d <- rbind(z,rep(0,ncol(z)))
+
+for (theta in seq(0,2*pi,length.out=50)) {
+  transZ <- apply(z3d,2,function(x) leftMultiply(matrix(c(cos(theta),0,-sin(theta),0,1,0,sin(theta),0,cos(theta)),nrow = 3, ncol = 3),x))
+  plot(transZ[2,]~transZ[1,], xlim = c(-3,3), ylim = c(-3,3))
+}
+
+```

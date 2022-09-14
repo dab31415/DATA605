@@ -1,0 +1,97 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+subtitle: 'Assignment 3'
+author: 'Donald Butler'
+date: '02/12/2022'
+
+output:
+    pdf_document:
+        extra_dependencies: ["geometry", "multicol", "multirow"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem Set 1
+
+1. What is the rank of the matrix A?
+
+$$A = \begin{bmatrix}1 & 2 & 3 & 4\\-1 & 0 & 1 & 3\\0 & 1 & -2 & 1\\5 & 4 & -2 & -3\end{bmatrix}$$
+
+The rank of a matrix is the maximum number of linearly independent columns of $A$, which can be found by counting the number of pivot columns in the reduced row echelon form of the matrix.
+
+```{r}
+library(pracma)
+A <- matrix(c(1,2,3,4,-1,0,1,3,0,1,-2,1,5,4,-2,-3), 4, 4, byrow = TRUE)
+rref(A)
+```
+The $rref(A)$ has 4 pivot columns, so the rank of A is 4.
+
+2. Given an $mxn$ matrix where $m > n$, what can be the maximum rank? The minimum rank, assuming that the matrix is non-zero?
+
+The maximum rank for a matrix is the smaller of the number of columns or the number of rows, since $m > n$, the maximum rank is $n$. If the matrix is non-zero, the rank must be at least 1, which is achieved if the columns are all multiples of each other.
+
+3. What is the rank of matrix B?
+
+$$B = \begin{bmatrix}1 & 2 & 1\\3 & 6 & 3 \\2 & 4 & 2\end{bmatrix}$$
+
+Just looking at $B$, you can tell that the rank is 1 because the columns are multiples of each other, $C_2 = 2C_1$ and $C_3 = C_1$.
+
+# Problem Set 2
+
+Compute the eigenvalues and eigenvectors of the matrix A. You'll need to show your work. You'll need to write out the characteristic polynomial and show your solution.
+
+$$A = \begin{bmatrix}1 & 2 & 3 \\0 & 4 & 5 \\0 & 0 & 6\end{bmatrix}$$
+
+```{r}
+A = matrix(c(1,2,3,0,4,5,0,0,6),3,3,byrow = TRUE)
+```
+
+\begin{align}Ax &= \lambda{}x \\ 0 &= \lambda{}x-Ax \\ 0 &= \lambda{}I_{n}x-Ax \\ 0 &= (\lambda{}I_{n}-A)x\end{align}
+
+This has solutions when $det(\lambda{}I-A) = 0$.
+
+\begin{align}\begin{vmatrix}\lambda{}-1 & -2 & -3 \\ 0 & \lambda{}-4 & -5 \\ 0 & 0 & \lambda{}-6\end{vmatrix}&=(\lambda{}-1)\begin{vmatrix}\lambda{}-4 & -5 \\ 0 & \lambda{}-6\end{vmatrix}-0\begin{vmatrix}-2 & -3 \\ 0 & \lambda{}-6\end{vmatrix}+0\begin{vmatrix}-2 & -3 \\ \lambda{}-4 & -5\end{vmatrix} \\ &=(\lambda{}-1)((\lambda{}-4)(\lambda{}-6)-(-5*0)) \\ &=(\lambda{}-1)(\lambda{}-4)(\lambda{}-6) \end{align}
+
+The characteristic polynomial is $\rho_A(x) = (x-1)(x-4)(x-6)$.
+
+For $\lambda{}=1$
+
+```{r}
+lambda = 1
+rref(lambda*diag(3)-A)
+```
+
+$\begin{bmatrix}0 & 1 & 0 \\ 0 & 0 & 1 \\ 0 & 0 & 0\end{bmatrix}\begin{bmatrix}v_1 \\ v_2 \\ v_3\end{bmatrix}=0$
+
+$v_2=0 \\ v_3 = 0$
+
+$\xi_A(1) = \left \langle \begin{bmatrix}1 \\ 0 \\ 0\end{bmatrix} \right \rangle$
+
+For $\lambda{}=4$
+
+```{r}
+lambda = 4
+rref(lambda*diag(3)-A)
+```
+
+$\begin{bmatrix}1 & -\frac{2}{3} & 0 \\ 0 & 0 & 1 \\ 0 & 0 & 0\end{bmatrix}\begin{bmatrix}v_1 \\ v_2 \\ v_3\end{bmatrix}=0$
+
+$v_1-\frac{2}{3}v_2=0; v_1 = \frac{2}{3}v_2 \\ v_3 = 0$
+
+$\xi_A(4) = \left \langle \begin{bmatrix}2 \\ 3 \\ 0\end{bmatrix} \right \rangle$
+
+For $\lambda{}=6$  
+
+```{r}
+lambda = 6
+rref(lambda*diag(3)-A)
+```
+
+$\begin{bmatrix}1 & 0 & -\frac{8}{5} \\ 0 & 1 & -\frac{5}{2} \\ 0 & 0 & 0\end{bmatrix}\begin{bmatrix}v_1 \\ v_2 \\ v_3\end{bmatrix}=0$
+
+$v_1-\frac{8}{5}v_3=0; v_1 = \frac{8}{5}v_3 \\ v_2-\frac{5}{2}v_3=0; v_2 = \frac{5}{2}v_3$
+
+$\xi_A(6) = \left \langle \begin{bmatrix}16 \\ 25 \\ 10\end{bmatrix} \right \rangle$
+

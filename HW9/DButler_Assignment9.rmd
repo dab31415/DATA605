@@ -1,0 +1,121 @@
+---
+title: 'DATA605: Fundamentals of Computational Mathematics'
+author: "Donald Butler"
+date: "03/27/2022"
+output:
+  pdf_document:
+    extra_dependencies:
+    - geometry
+    - multicol
+    - multirow
+  word_document: default
+subtitle: Assignment 9
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1.
+
+The price of one share of stock in the Pilsdorff Beer Company is given by $Y_n$ on the nth day of the year. Finn observes that the differences $X_n = Y_{n+1}-Y_n$ appear to be independent random variables with a common distribution having mean $\mu = 0$ and variance $\sigma^2 = 1/4$. If $Y_1 = 100$, estimate the probability the $Y_365$ is:
+
+The price of a stock on day N is the sum of the previous days differences. 
+
+
+## 1a. $\ge 100$.
+
+
+```{r}
+n <- 364
+mu <- 0
+var <- 1/4
+
+Sn <- 100 - 100 #Y_365 - Y_1
+sd <- sqrt(n * var)
+
+pnorm(Sn, mu, sd, lower.tail = FALSE)
+
+```
+
+
+## 1b. $\ge 110$.
+
+```{r}
+n <- 364
+mu <- 0
+var <- 1/4
+
+Sn <- 110 - 100 #Y_365 - Y_1
+sd <- sqrt(n * var)
+
+pnorm(Sn, mu, sd, lower.tail = FALSE)
+
+```
+
+
+## 1c. $\ge 120$.
+
+```{r}
+n <- 364
+mu <- 0
+var <- 1/4
+
+Sn <- 120 - 100 #Y_365 - Y_1
+sd <- sqrt(n * var)
+
+pnorm(Sn, mu, sd, lower.tail = FALSE)
+
+```
+
+# Problem 2.
+
+Calculate the expected value and variance of the binomial distribution using the moment generating function.
+
+The moment generating function for the binomial distribution is $g(t) = (pe^t + (1-p))^n$. To calculate the mean and variance, we need the first and second derivatives of $g(t)$. 
+$$g'(t) = n(pe^t + (1-p))^{n-1}(pe^t)$$
+$$g''(t) = n(n-1)(pe^t + (1-p))^{n-2}(pe^t)^2+n(pe^t + (1-p))^{n-1}(pe^t)$$
+
+$$\begin{aligned}
+\mu & = g'(0) \\
+& = n(pe^0+(1-p))^{n-1}(pe^0) \\
+& = n(p+(1-p))^{n-1}(p) \\
+& = n(1^{n-1})p \\
+& = np
+\end{aligned}$$
+
+$$\begin{aligned}
+\sigma^2 & = g''(0) - \mu^2 \\
+& = n(n-1)(pe^0+(1-p))^{n-2}(pe^0)^2+n(pe^0 + (1-p))^{n-1}(pe^0) - (np)^2\\
+& = (n^2-n)(p+(1-p))^{n-2}p^2 + n(p + (1-p))^{n-1}p - (np)^2 \\
+& = (np)^2 - np^2 +np - (np)^2 \\
+& = np-np^2 \\
+& = np(1-p) \\
+\end{aligned}$$
+
+
+# Problem 3.
+
+Calculate the expected value and variance of the exponential distribution using the moment generating function.
+
+$$g(t) = \frac{1}{1-t/\lambda}$$
+$$g'(t) = (1/\lambda)(1-t/\lambda)^{-2}$$
+
+$$g''(t) = (2/\lambda)^2(1-t/\lambda)^{-3}$$
+
+$$\begin{aligned}
+\mu & = g'(0) \\
+& = 1 / \lambda
+\end{aligned}$$
+
+
+$$\begin{aligned}
+\sigma^2 & = g''(0) - \mu^2 \\
+& = (2/\lambda)^2 - (1/\lambda)^2 \\
+& = 1/\lambda^2
+\end{aligned}$$
+
+
+
+
+
